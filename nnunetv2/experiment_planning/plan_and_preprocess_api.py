@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0, "/home/x.liang/MyProject/nnUNet")
 from typing import List, Type, Optional, Tuple, Union
 
 from batchgenerators.utilities.file_and_folder_operations import join, maybe_mkdir_p, load_json

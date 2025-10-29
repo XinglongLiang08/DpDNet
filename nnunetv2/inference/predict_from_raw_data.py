@@ -6,7 +6,8 @@ import traceback
 from copy import deepcopy
 from time import sleep
 from typing import Tuple, Union, List, Optional
-
+import sys
+sys.path.append(r'/home/x.liang/MyProject/nnUNet')
 import numpy as np
 import torch
 from acvl_utils.cropping_and_padding.padding import pad_nd_image
@@ -880,24 +881,47 @@ if __name__ == '__main__':
         allow_tqdm=True
     )
     predictor.initialize_from_trained_model_folder(
-        join(nnUNet_results, 'Dataset003_Liver/nnUNetTrainer__nnUNetPlans__3d_lowres'),
-        use_folds=(0,),
-        checkpoint_name='checkpoint_final.pth',
+        join(nnUNet_results, 'Dataset231_nki_breast/STUNetTrainer_small_ft__nnUNetPlans__3d_fullres'),#Dataset221_AutoPETII_2023/nnUNetTrainer__nnUNetPlans__3d_fullres
+        use_folds=(0,1,2,3,4),
+        checkpoint_name='checkpoint_best.pth',
     )
-    predictor.predict_from_files(join(nnUNet_raw, 'Dataset003_Liver/imagesTs'),
-                                 join(nnUNet_raw, 'Dataset003_Liver/imagesTs_predlowres'),
+    predictor.predict_from_files(join(nnUNet_raw, '/projects/nki-breast-mri/snapshot/a_PETCT/firstDiagnose/beforeSurgery_nnunet/imagesTs'),
+                                 join(nnUNet_raw, '/projects/nki-breast-mri/snapshot/a_PETCT/firstDiagnose/beforeSurgery_nnunet/imagesTs_predlowres_nki_breast_onlyBreast_stunet_5fold'),
                                  save_probabilities=False, overwrite=False,
                                  num_processes_preprocessing=2, num_processes_segmentation_export=2,
                                  folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0)
 
+
+    #stunet
+    # predictor.initialize_from_trained_model_folder(
+    #     join(nnUNet_results, 'Dataset227_zhongshanBreast_2023/STUNetTrainer_small_ft__nnUNetPlans__3d_fullres'),
+    #     use_folds=(0,),
+    #     checkpoint_name='checkpoint_best.pth',
+    # )
+    # predictor.predict_from_files(
+    #     join(nnUNet_raw, '/projects/nki-breast-mri/snapshot/a_PETCT/firstDiagnose/beforeSurgery_nnunet/imagesTs'),
+    #     join(nnUNet_raw,
+    #          '/projects/nki-breast-mri/snapshot/a_PETCT/firstDiagnose/beforeSurgery_nnunet/imagesTs_predlowres_stunet'),
+    #     save_probabilities=False, overwrite=False,
+    #     num_processes_preprocessing=2, num_processes_segmentation_export=2,
+    #     folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0)
+
+
+
+
+
+
+
+
+
     # predict a numpy array
-    from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
-
-    img, props = SimpleITKIO().read_images([join(nnUNet_raw, 'Dataset003_Liver/imagesTr/liver_63_0000.nii.gz')])
-    ret = predictor.predict_single_npy_array(img, props, None, None, False)
-
-    iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
-    ret = predictor.predict_from_data_iterator(iterator, False, 1)
+    # from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
+    #
+    # img, props = SimpleITKIO().read_images([join(nnUNet_raw, 'Dataset221_AutoPETII_2023/imagesTr/liver_63_0000.nii.gz')])
+    # ret = predictor.predict_single_npy_array(img, props, None, None, False)
+    #
+    # iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
+    # ret = predictor.predict_from_data_iterator(iterator, False, 1)
 
     # predictor = nnUNetPredictor(
     #     tile_step_size=0.5,

@@ -12,6 +12,9 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+import sys
+
+sys.path.append('/home/x.liang/MyProject/nnUNet/nnunetv2')
 import multiprocessing
 import re
 from multiprocessing import Pool
@@ -25,8 +28,8 @@ from nnunetv2.imageio.base_reader_writer import BaseReaderWriter
 from nnunetv2.imageio.reader_writer_registry import determine_reader_writer_from_dataset_json
 from nnunetv2.paths import nnUNet_raw
 from nnunetv2.utilities.label_handling.label_handling import LabelManager
-from nnunetv2.utilities.utils import get_identifiers_from_splitted_dataset_folder, \
-    get_filenames_of_train_images_and_targets
+from nnunetv2.utilities.utils import get_identifiers_from_splitted_dataset_folder
+from nnunetv2.utilities.utils import get_filenames_of_train_images_and_targets
 
 
 def verify_labels(label_file: str, readerclass: Type[BaseReaderWriter], expected_labels: List[int]) -> bool:
@@ -229,6 +232,6 @@ def verify_dataset_integrity(folder: str, num_processes: int = 8) -> None:
 
 if __name__ == "__main__":
     # investigate geometry issues
-    example_folder = join(nnUNet_raw, 'Dataset250_COMPUTING_it0')
+    example_folder = join(nnUNet_raw, 'Dataset221_AutoPETII_2023')
     num_processes = 6
     verify_dataset_integrity(example_folder, num_processes)

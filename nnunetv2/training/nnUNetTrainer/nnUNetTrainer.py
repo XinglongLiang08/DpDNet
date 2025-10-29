@@ -27,7 +27,7 @@ from torch._dynamo import OptimizedModule
 from nnunetv2.configuration import ANISO_THRESHOLD, default_num_processes
 from nnunetv2.evaluation.evaluate_predictions import compute_metrics_on_folder
 from nnunetv2.inference.export_prediction import export_prediction_from_logits, resample_and_save
-from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
+from nnunetv2.inference.predict_from_raw_data_prompt import nnUNetPredictor
 from nnunetv2.inference.sliding_window_prediction import compute_gaussian
 from nnunetv2.paths import nnUNet_preprocessed, nnUNet_results
 from nnunetv2.training.data_augmentation.compute_initial_patch_size import get_patch_size
@@ -64,7 +64,7 @@ from torch import distributed as dist
 from torch.cuda import device_count
 from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
-
+from fvcore.nn import FlopCountAnalysis, parameter_count
 
 class nnUNetTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
@@ -141,14 +141,15 @@ class nnUNetTrainer(object):
                 if self.is_cascaded else None
 
         ### Some hyperparameters for you to fiddle with
-        self.initial_lr = 1e-2
-        self.weight_decay = 3e-5
+        self.initial_lr = 1e-4
+        self.weight_decay = 0.001
         self.oversample_foreground_percent = 0.33
-        self.num_iterations_per_epoch = 250
-        self.num_val_iterations_per_epoch = 50
-        self.num_epochs = 1000
+        self.num_iterations_per_epoch = 250#250
+        self.num_val_iterations_per_epoch = 50#50
+        self.num_val_iterations_per_epoch = 50#50
+        self.num_epochs = 500
         self.current_epoch = 0
-        self.enable_deep_supervision = True
+        self.enable_deep_supervision = False
 
         ### Dealing with labels/regions
         self.label_manager = self.plans_manager.get_label_manager(dataset_json)
@@ -223,10 +224,37 @@ class nnUNetTrainer(object):
                 self.network = DDP(self.network, device_ids=[self.local_rank])
 
             self.loss = self._build_loss()
+
+            #########################################################################################################
+            # def my_get_dice_loss(preds, target):
+            #     # pred = torch.softmax(preds, dim=0)[1, :, :, :, :].unsqueeze(0)
+            #     # print('preds.shape')
+            #     # print(preds)
+            #     # print(preds.shape)
+            #     # print('target.shape')
+            #     # print(target)
+            #     # print(target.shape)
+            #     pred =preds
+            #     # print('pred.shape')
+            #     # print(pred.shape)
+            #     # print('target.shape')
+            #     # print(target.shape)
+            #     inter = (pred * target)
+            #     union = (pred + target)
+            #     # pred: BCDHW, target: BCDHW
+            #     if (len(pred.shape) == 5) and (len(target.shape) == 5):
+            #         inter = inter.sum(dim=(2, 3, 4))
+            #         union = union.sum(dim=(2, 3, 4))
+            #     dice_loss = 1 - 2 * (inter + 1) / (union + 2)
+            #     return dice_loss.mean()
+            # self.loss = my_get_dice_loss
+            #########################################################################################################
             self.was_initialized = True
         else:
             raise RuntimeError("You have called self.initialize even though the trainer was already initialized. "
                                "That should not happen.")
+
+
 
     def _do_i_compile(self):
         return ('nnUNet_compile' in os.environ.keys()) and (os.environ['nnUNet_compile'].lower() in ('true', '1', 't'))
@@ -350,7 +378,7 @@ class nnUNetTrainer(object):
             self.oversample_foreground_percent = oversample_percent
 
     def _build_loss(self):
-        if self.label_manager.has_regions:
+        if self.label_manager.has_regions:#可能是有病变的意思
             loss = DC_and_BCE_loss({},
                                    {'batch_dice': self.configuration_manager.batch_dice,
                                     'do_bg': True, 'smooth': 1e-5, 'ddp': self.is_ddp},
@@ -374,7 +402,10 @@ class nnUNetTrainer(object):
                 weights[-1] = 1e-6
             else:
                 weights[-1] = 0
-
+            ##################################################################################################
+            weights[0] = 1
+            weights[1:] = 0
+            ##################################################################################################
             # we don't use the lowest 2 outputs. Normalize weights so that they sum to 1
             weights = weights / weights.sum()
             # now wrap the loss
@@ -550,6 +581,11 @@ class nnUNetTrainer(object):
             else:
                 self.print_to_log_file("Using splits from existing split file:", splits_file)
                 splits = load_json(splits_file)
+                # ######################################### 把json文件取出来
+                # new_folder_path = '/projects/whole_body_PET_CT_segmentation_data/nnUNetFrame/DATASET/nnUNet_preprocessed/Dataset221_AutoPETII_2023'
+                # # 复制 文件
+                # shutil.copy(splits_file, new_folder_path)
+                # #########################################
                 self.print_to_log_file(f"The split file contains {len(splits)} splits.")
 
             self.print_to_log_file("Desired fold for training: %d" % self.fold)
@@ -633,11 +669,11 @@ class nnUNetTrainer(object):
             mt_gen_val = SingleThreadedAugmenter(dl_val, val_transforms)
         else:
             mt_gen_train = LimitedLenWrapper(self.num_iterations_per_epoch, data_loader=dl_tr, transform=tr_transforms,
-                                             num_processes=allowed_num_processes, num_cached=6, seeds=None,
-                                             pin_memory=self.device.type == 'cuda', wait_time=0.02)
+                                             num_processes=allowed_num_processes, num_cached=24, seeds=None,
+                                             pin_memory=True, wait_time=0.02)
             mt_gen_val = LimitedLenWrapper(self.num_val_iterations_per_epoch, data_loader=dl_val,
                                            transform=val_transforms, num_processes=max(1, allowed_num_processes // 2),
-                                           num_cached=3, seeds=None, pin_memory=self.device.type == 'cuda',
+                                           num_cached=12, seeds=None, pin_memory=True,
                                            wait_time=0.02)
         return mt_gen_train, mt_gen_val
 
@@ -801,6 +837,7 @@ class nnUNetTrainer(object):
         This function is specific for the default architecture in nnU-Net. If you change the architecture, there are
         chances you need to change this as well!
         """
+        pass#自己修改的
         if self.is_ddp:
             mod = self.network.module
         else:
@@ -887,11 +924,25 @@ class nnUNetTrainer(object):
             f"Current learning rate: {np.round(self.optimizer.param_groups[0]['lr'], decimals=5)}")
         # lrs are the same for all workers so we don't need to gather them in case of DDP training
         self.logger.log('lrs', self.optimizer.param_groups[0]['lr'], self.current_epoch)
+        ###################################################################################
+        # total_params = sum(p.numel() for p in self.network.parameters() if p.requires_grad)
+        # self.print_to_log_file(f"Total trainable parameters: {total_params / 1e6:.2f} M")
+        # # 计算 FLOPs（假设输入张量大小为 [1, 3, 128, 128, 128]）
+        # input_tensor = torch.randn(1, 2, 112, 160, 128, dtype=torch.float32).to(next(self.network.parameters()).device)  # 保证设备一致
+        #
+        # =[['brea']]
+        # inputs = (input_tensor, prompt)
+        # flops = FlopCountAnalysis(self.network, inputs)
+        # self.print_to_log_file(f"FLOPs: {flops.total() / 1e9:.2f} GFLOPs")
+        # sys.exit()
 
     def train_step(self, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
-
+        ###################################################################
+        properties = batch['properties']
+        prompt = [prop['type'] for prop in properties]
+        ###################################################################
         data = data.to(self.device, non_blocking=True)
         if isinstance(target, list):
             target = [i.to(self.device, non_blocking=True) for i in target]
@@ -904,9 +955,24 @@ class nnUNetTrainer(object):
         # If the device_type is 'mps' then it will complain that mps is not implemented, even if enabled=False is set. Whyyyyyyy. (this is why we don't make use of enabled=False)
         # So autocast will only be active if we have a cuda device.
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            output = self.network(data)
+            # print(data.size())#torch.Size([2, 2, 128, 128, 128])
+            ###################################################################
+            output = self.network(data,prompt)
+            # output = self.network(data)
+            ###################################################################
+            # print(output.size())#torch.Size([2, 2, 128, 128, 128])
             # del data
+            # print(len(target))
+            # for u in range(len(target)):
+            #     output_size = target[u].size()  # 或者使用 .shape
+            #     print("Size of segmentation output", u, ":", output_size)
+            # 0: torch.Size([2, 1, 128, 128, 128])
+            # 1: torch.Size([2, 1, 64, 64, 64])
+            # 2: torch.Size([2, 1, 32, 32, 32])
+            # 3: torch.Size([2, 1, 16, 16, 16])
+            # 4: torch.Size([2, 1, 8, 8, 8])
             l = self.loss(output, target)
+            # l = self.loss(output, target[0])
 
         if self.grad_scaler is not None:
             self.grad_scaler.scale(l).backward()
@@ -938,7 +1004,10 @@ class nnUNetTrainer(object):
     def validation_step(self, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
-
+        ###################################################################
+        properties = batch['properties']
+        prompt = [prop['type'] for prop in properties]
+        ###################################################################
         data = data.to(self.device, non_blocking=True)
         if isinstance(target, list):
             target = [i.to(self.device, non_blocking=True) for i in target]
@@ -949,8 +1018,23 @@ class nnUNetTrainer(object):
         # If the device_type is 'cpu' then it's slow as heck and needs to be disabled.
         # If the device_type is 'mps' then it will complain that mps is not implemented, even if enabled=False is set. Whyyyyyyy. (this is why we don't make use of enabled=False)
         # So autocast will only be active if we have a cuda device.
+        #########################################################################################################
+        # with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
+        #     output = self.network(data)
+        #     del data
+        #     l = self.loss(output, target[0])
+        # # save model
+        # self.network.eval()
+        # # torch.save(self.network.state_dict(), f'new_model.pth')
+        # # ! modifying here!
+        # output = output
+        # target = target[0]
+        #########################################################################################################
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
-            output = self.network(data)
+            ###################################################################
+            output = self.network(data, prompt)
+            # output = self.network(data)
+            ###################################################################
             del data
             l = self.loss(output, target)
 
@@ -1192,8 +1276,22 @@ class nnUNetTrainer(object):
 
                 self.print_to_log_file(f'{k}, shape {data.shape}, rank {self.local_rank}')
                 output_filename_truncated = join(validation_output_folder, k)
+                #####################################################################
 
-                prediction = predictor.predict_sliding_window_return_logits(data)
+                try:
+                    if isinstance(properties, dict):
+                        prompt = properties['type']
+                    elif isinstance(properties, list):
+                        prompt = [prop['type'] for prop in properties]
+                    else:
+                        raise TypeError(f"Unexpected type for 'properties': {type(properties)}")
+                except KeyError as e:
+                    raise KeyError(f"Key error accessing 'properties': {e}")
+                except TypeError as e:
+                    raise TypeError(f"Type error: {e}")
+                prediction = predictor.predict_sliding_window_return_logits(data, [prompt])
+                #####################################################################
+                # prediction = predictor.predict_sliding_window_return_logits(data)
                 prediction = prediction.cpu()
 
                 # this needs to go into background processes
@@ -1271,6 +1369,15 @@ class nnUNetTrainer(object):
         self.on_train_start()
 
         for epoch in range(self.current_epoch, self.num_epochs):
+            # 添加的后解冻编码器代码
+            # if epoch == 100:
+            #     print("Epoch 50 reached. Unfreezing pretrained parameters...")
+            #     for name, param in self.network.named_parameters():
+            #         # 如果只想解冻特定的预训练层，可以根据名称或者其他标记做判断
+            #         if not param.requires_grad:
+            #             param.requires_grad = True
+            #             print(f"Parameter {name} is now unfrozen.")
+
             self.on_epoch_start()
 
             self.on_train_epoch_start()

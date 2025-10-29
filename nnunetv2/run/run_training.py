@@ -1,7 +1,8 @@
 import os
 import socket
+import sys
 from typing import Union, Optional
-
+sys.path.append(r'/home/x.liang/MyProject/nnUNet')
 import nnunetv2
 import torch.cuda
 import torch.distributed as dist
@@ -10,6 +11,7 @@ from batchgenerators.utilities.file_and_folder_operations import join, isfile, l
 from nnunetv2.paths import nnUNet_preprocessed
 from nnunetv2.run.load_pretrained_weights import load_pretrained_weights
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
+from nnunetv2.training.nnUNetTrainer.STUNetTrainer import STUNetTrainer_small
 from nnunetv2.utilities.dataset_name_id_conversion import maybe_convert_to_dataset_name
 from nnunetv2.utilities.find_class_by_name import recursive_find_python_class
 from torch.backends import cudnn
@@ -84,7 +86,7 @@ def maybe_load_checkpoint(nnunet_trainer: nnUNetTrainer, continue_training: bool
                                f"continue from. Starting a new training...")
             expected_checkpoint_file = None
     elif validation_only:
-        expected_checkpoint_file = join(nnunet_trainer.output_folder, 'checkpoint_final.pth')
+        expected_checkpoint_file = join(nnunet_trainer.output_folder, 'checkpoint_final.pth')#checkpoint_latest.pth   原来是checkpoint_final.pth
         if not isfile(expected_checkpoint_file):
             raise RuntimeError(f"Cannot run validation because the training is not finished yet!")
     else:
@@ -217,8 +219,10 @@ def run_training_entry():
                         help="Configuration that should be trained")
     parser.add_argument('fold', type=str,
                         help='Fold of the 5-fold cross-validation. Should be an int between 0 and 4.')
-    parser.add_argument('-tr', type=str, required=False, default='nnUNetTrainer',
+    parser.add_argument('-tr', type=str, required=False, default='STUNetTrainer_base_Prompt_Gate_Simple_KI',
                         help='[OPTIONAL] Use this flag to specify a custom trainer. Default: nnUNetTrainer')
+    # parser.add_argument('-tr', type=str, required=False, default='STUNetTrainer_large',#KiUNetTrainer
+    #                     help='[OPTIONAL] Use this flag to specify a custom trainer. Default: nnUNetTrainer')
     parser.add_argument('-p', type=str, required=False, default='nnUNetPlans',
                         help='[OPTIONAL] Use this flag to specify a custom plans identifier. Default: nnUNetPlans')
     parser.add_argument('-pretrained_weights', type=str, required=False, default=None,

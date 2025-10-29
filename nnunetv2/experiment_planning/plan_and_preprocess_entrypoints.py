@@ -1,3 +1,6 @@
+import sys
+# sys.path.append("/home/x.liang/MyProject/nnUNet")
+sys.path.insert(0, "/home/x.liang/MyProject/nnUNet")
 from nnunetv2.configuration import default_num_processes
 from nnunetv2.experiment_planning.plan_and_preprocess_api import extract_fingerprints, plan_experiments, preprocess
 
@@ -100,7 +103,7 @@ def preprocess_entry():
             '3d_lowres': 8,
             '3d_fullres': 4
         }
-        np = {default_np[c] if c in default_np.keys() else 4 for c in args.c}
+        np = [default_np[c] if c in default_np.keys() else 4 for c in args.c]
     else:
         np = args.np
     preprocess(args.d, args.plans_name, configurations=args.c, num_processes=np, verbose=args.verbose)

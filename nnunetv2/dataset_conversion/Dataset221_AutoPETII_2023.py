@@ -4,7 +4,7 @@ from nnunetv2.dataset_conversion.generate_dataset_json import generate_dataset_j
 from nnunetv2.paths import nnUNet_raw, nnUNet_preprocessed
 
 
-def convert_autopet(autopet_base_dir:str = '/media/isensee/My Book1/AutoPET/nifti/FDG-PET-CT-Lesions',
+def convert_autopet(autopet_base_dir:str = '/processing/x.liang/FDG-PET-CT-Lesions',
                      nnunet_dataset_id: int = 221):
     task_name = "AutoPETII_2023"
 

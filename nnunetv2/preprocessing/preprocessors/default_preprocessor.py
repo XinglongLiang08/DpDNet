@@ -11,6 +11,8 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+import sys
+sys.path.insert(0, "/home/x.liang/MyProject/nnUNet")
 import multiprocessing
 import shutil
 from time import sleep
@@ -28,7 +30,7 @@ from nnunetv2.utilities.plans_handling.plans_handler import PlansManager, Config
 from nnunetv2.utilities.utils import get_identifiers_from_splitted_dataset_folder, \
     create_lists_from_splitted_dataset_folder, get_filenames_of_train_images_and_targets
 from tqdm import tqdm
-
+import logging
 
 class DefaultPreprocessor(object):
     def __init__(self, verbose: bool = True):
@@ -122,6 +124,7 @@ class DefaultPreprocessor(object):
         so when we export we need to run the following order: resample -> crop -> transpose (we could also run
         transpose at a different place, but reverting the order of operations done during preprocessing seems cleaner)
         """
+        print('run_case')
         if isinstance(dataset_json, str):
             dataset_json = load_json(dataset_json)
 
@@ -129,7 +132,14 @@ class DefaultPreprocessor(object):
 
         # load image(s)
         data, data_properties = rw.read_images(image_files)
-
+        ############################################调试使用  添加prompt
+        data_properties['type'] = [os.path.basename(fname).replace('.nii.gz', '')[:4] for fname in image_files]
+        # print('data_properties----',data_properties)
+        # logging.basicConfig(filename="/home/x.liang/records/3DUnet/debug_output.log", level=logging.INFO,
+        #                     format="%(asctime)s - %(process)d - %(message)s")
+        #
+        # logging.info(f"data_properties: {data_properties}")
+        ############################################调试使用  添加prompt
         # if possible, load seg
         if seg_file is not None:
             seg, _ = rw.read_seg(seg_file)
@@ -143,6 +153,7 @@ class DefaultPreprocessor(object):
     def run_case_save(self, output_filename_truncated: str, image_files: List[str], seg_file: str,
                       plans_manager: PlansManager, configuration_manager: ConfigurationManager,
                       dataset_json: Union[dict, str]):
+        print('run_case_save')
         data, seg, properties = self.run_case(image_files, seg_file, plans_manager, configuration_manager, dataset_json)
         # print('dtypes', data.dtype, seg.dtype)
         np.savez_compressed(output_filename_truncated + '.npz', data=data, seg=seg)
@@ -197,7 +208,6 @@ class DefaultPreprocessor(object):
         data identifier = configuration name in plans. EZ.
         """
         dataset_name = maybe_convert_to_dataset_name(dataset_name_or_id)
-
         assert isdir(join(nnUNet_raw, dataset_name)), "The requested dataset could not be found in nnUNet_raw"
 
         plans_file = join(nnUNet_preprocessed, dataset_name, plans_identifier + '.json')
@@ -206,12 +216,10 @@ class DefaultPreprocessor(object):
         plans = load_json(plans_file)
         plans_manager = PlansManager(plans)
         configuration_manager = plans_manager.get_configuration(configuration_name)
-
         if self.verbose:
             print(f'Preprocessing the following configuration: {configuration_name}')
         if self.verbose:
             print(configuration_manager)
-
         dataset_json_file = join(nnUNet_preprocessed, dataset_name, 'dataset.json')
         dataset_json = load_json(dataset_json_file)
 
@@ -230,11 +238,13 @@ class DefaultPreprocessor(object):
         # multiprocessing magic.
         r = []
         with multiprocessing.get_context("spawn").Pool(num_processes) as p:
+            print('run1')
             for k in dataset.keys():
                 r.append(p.starmap_async(self.run_case_save,
                                          ((join(output_directory, k), dataset[k]['images'], dataset[k]['label'],
                                            plans_manager, configuration_manager,
                                            dataset_json),)))
+            print('run2')
             remaining = list(range(len(dataset)))
             # p is pretty nifti. If we kill workers they just respawn but don't do any work.
             # So we need to store the original pool of workers.
