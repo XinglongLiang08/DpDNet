@@ -22,12 +22,6 @@ The cancer type must be encoded in the filename prefix.
 
 ### 1.1 Image File Naming Format
 
-<type><CaseID><Date>resampled_image_0000.nii.gz
-<type><CaseID>_<Date>_resampled_image_0001.nii.gz
-
-shell
-Copy code
-
 #### Examples
 brea_B000000665_20140331_resampled_image_0000.nii.gz
 brea_B000000665_20140331_resampled_image_0001.nii.gz
@@ -41,26 +35,16 @@ mela_B000000665_20140331_resampled_image_0001.nii.gz
 lung_B000000665_20140331_resampled_image_0000.nii.gz
 lung_B000000665_20140331_resampled_image_0001.nii.gz
 
-yaml
-Copy code
 
 ---
 
 ### 1.2 Label File Naming Format
-
-<type><CaseID><Date>_resampled_image.nii.gz
-
-shell
-Copy code
 
 #### Examples
 brea_B000000665_20140331_resampled_image.nii.gz
 lymp_B000000665_20140331_resampled_image.nii.gz
 mela_B000000665_20140331_resampled_image.nii.gz
 lung_B000000665_20140331_resampled_image.nii.gz
-
-yaml
-Copy code
 
 ---
 
@@ -71,8 +55,6 @@ We modify the default nnUNet preprocessing pipeline so that the system recognize
 File modified:
 nnunetv2/preprocessing/preprocessors/default_preprocessor.py
 
-yaml
-Copy code
 
 This allows each patch to **carry its cancer-type metadata**, enabling the model to dynamically adapt during both training and inference.
 
@@ -116,4 +98,12 @@ Ensure label naming matches the image prefix.
 Ensure self.map in STUNetTrainer is consistent with dataset classes.
 
 7. Citation
-If you use this work, please consider citing nnUNet and STU-Net.
+If you use this work, please consider citing 
+@inproceedings{liang2025dpdnet,
+  title={DpDNet: An Dual-Prompt-Driven Network for Universal PET-CT Segmentation},
+  author={Liang, Xinglong and Huang, Jiaju and Han, Luyi and Zhang, Tianyu and Wang, Xin and Gao, Yuan and Lu, Chunyao and Cai, Lishan and Tan, Tao and Mann, Ritse},
+  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+  pages={163--172},
+  year={2025},
+  organization={Springer}
+}
