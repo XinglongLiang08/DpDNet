@@ -98,7 +98,8 @@ Ensure label naming matches the image prefix.
 Ensure self.map in STUNetTrainer is consistent with dataset classes.
 
 7. Citation
-If you use this work, please consider citing 
+If you use this work, please consider citing
+
 @inproceedings{liang2025dpdnet,
   title={DpDNet: An Dual-Prompt-Driven Network for Universal PET-CT Segmentation},
   author={Liang, Xinglong and Huang, Jiaju and Han, Luyi and Zhang, Tianyu and Wang, Xin and Gao, Yuan and Lu, Chunyao and Cai, Lishan and Tan, Tao and Mann, Ritse},
