@@ -68,7 +68,6 @@ File:
 STUNetTrainer.py
 
 Update:
-```python
 self.map = {'lymp': 0, 'mela': 1, 'lung': 2, 'brea': 3}
 If you add or remove cancer categories, adjust the dictionary accordingly.
 
