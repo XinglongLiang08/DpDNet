@@ -67,37 +67,36 @@ Please edit the cancer-type index mapping based on the number of cancer types in
 File:
 STUNetTrainer.py
 
-python
-Copy code
-
 Update:
 ```python
 self.map = {'lymp': 0, 'mela': 1, 'lung': 2, 'brea': 3}
 If you add or remove cancer categories, adjust the dictionary accordingly.
 
-4. Training & Preprocessing
+## 4. Training & Preprocessing
 All preprocessing and training steps follow the standard nnUNetv2 + STU-Net workflow.
 
 Step 1: Preprocess
-bash
-Copy code
+
 python nnUNet/nnunetv2/experiment_planning/plan_and_preprocess_entrypoints.py -d <DATASET_ID> -c 3d_fullres
+
 Step 2: Training
-bash
-Copy code
+
 python nnUNet/nnunetv2/run/run_training.py Dataset<DATASET_ID>_seg 3d_fullres 0 -tr STUNetTrainer_small_prompt
-5. Inference
+
+## 5. Inference
+
 Inference follows the standard nnUNetv2 inference command.
 The model will automatically detect the cancer type based on filename prefix during test-time.
 
-6. Notes
+## 6. Notes
 Ensure filename prefixes (brea, lymp, mela, lung) are correct.
 
 Ensure label naming matches the image prefix.
 
 Ensure self.map in STUNetTrainer is consistent with dataset classes.
 
-7. Citation
+## 7. Citation
+
 If you use this work, please consider citing
 
 @inproceedings{liang2025dpdnet,
